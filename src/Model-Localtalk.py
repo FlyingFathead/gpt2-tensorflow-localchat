@@ -19,6 +19,9 @@ import model
 import sample
 import encoder
 
+# Set the directory for models here
+models_directory = os.path.expanduser('~/NeuralNetwork/vzgpt/__incheck/')
+
 # Set the GPU you want to use here
 os.environ['CUDA_VISIBLE_DEVICES'] = '0'  # Adjust this as needed to switch GPUs
 
@@ -104,7 +107,7 @@ class ModelWrapper:
         return text.split('\n')[0]
 
 # Usage
-model_wrapper = ModelWrapper(os.path.expanduser('~/NeuralNetwork/vzgpt/__incheck/'))
+model_wrapper = ModelWrapper(models_directory)
 
 def main_loop():
     print("Welcome to the CLI Chatbot. Type 'quit' to exit.")
