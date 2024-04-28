@@ -62,4 +62,4 @@ Distributed under the MIT License. See `LICENSE` for more information.
 
 ## Contact
 Project Link: [https://github.com/FlyingFathead/gpt2-tensorflow-localchat](https://github.com/FlyingFathead/gpt2-tensorflow-localchat)
-
+Project Creator: [Flyingfathead on GitHub](https://github.com/FlyingFathead/)
