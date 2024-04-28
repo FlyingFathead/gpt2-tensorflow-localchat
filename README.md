@@ -1,2 +1,64 @@
 # gpt2-tensorflow-localchat
-Simple CLI chat mode framework for local GPT-2 Tensorflow models
+
+`gpt2-tensorflow-localchat` is a simple CLI chat mode framework for Python, built for locally running GPT-2 models with TensorFlow. This tool provides an easy way to interact with GPT-2 models and fine-tune them on custom data sets or use them for unique, real-time applications.
+
+## Project Repository
+Explore more about this project and its developments on GitHub: [gpt2-tensorflow-localchat](https://github.com/FlyingFathead/gpt2-tensorflow-localchat)
+
+## Features
+- CLI-based interaction with GPT-2 models.
+- Local deployment of TensorFlow models for privacy and control.
+- Support for multiple command scripts to demonstrate various capabilities.
+
+## Directory Structure
+```
+├── .gitignore
+├── README.md
+└── src/
+    ├── Model-Battle.py          # Battle between models: experimental feature
+    ├── Model-Localtalk.py       # Main script for local chat interactions
+    ├── encoder.py               # Manages text encoding and decoding
+    ├── model.py                 # Core TensorFlow model definitions
+    ├── olddemo.py               # Old demonstration scripts for reference
+    ├── sample.py                # Sampling utilities for generating text
+    └── start_localtalk.sh       # Script to start local chat environment
+```
+
+## Getting Started
+
+### Prerequisites
+- Python 3.x
+- TensorFlow 1.15 or higher (with `compat.v1` API support)
+- An environment supporting bash scripts (Linux/Unix)
+
+### Installation
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/FlyingFathead/gpt2-tensorflow-localchat.git
+   ```
+2. Navigate into the project directory:
+   ```bash
+   cd gpt2-tensorflow-localchat
+   ```
+3. Install required Python libraries:
+   ```bash
+   pip install -r requirements.txt
+   ```
+_(Note: `requirements.txt` currently not added in yet. Use your own local TF model files.)_
+
+### Usage
+To start a local chat with the model:
+```bash
+./src/start_localtalk.sh
+```
+This script sets the appropriate TensorFlow logging level and starts an interactive chat session using `Model-Localtalk.py`.
+
+## Contributing
+Contributions are what make the open-source community such an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**.
+
+## License
+Distributed under the MIT License. See `LICENSE` for more information.
+
+## Contact
+Project Link: [https://github.com/FlyingFathead/gpt2-tensorflow-localchat](https://github.com/FlyingFathead/gpt2-tensorflow-localchat)
+
