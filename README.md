@@ -21,8 +21,9 @@ Explore more about this project and its developments on GitHub: [gpt2-tensorflow
     ├── model.py                 # Core TensorFlow model definitions
     ├── olddemo.py               # Old demonstration scripts for reference
     ├── sample.py                # Sampling utilities for generating text
-    └── start_localtalk.sh       # Script to start local chat environment
+    └── start_localtalk.sh       # Script to start local chat environment(*)
 ```
+_(*) The purpose of the bash script is to suppress Tensorflow's output from interfering in the CLI output._
 
 ## Getting Started
 
