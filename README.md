@@ -58,7 +58,7 @@ This script sets the appropriate TensorFlow logging level and starts an interact
 Contributions are what make the open-source community such an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**.
 
 ## License
-Distributed under the MIT License. See `LICENSE` for more information.
+Distributed under the MIT License. See `LICENSE` for more information. Parts of the model loading code has been forked from [OpenAI's GPT-2 source code](https://github.com/openai/gpt-2).
 
 ## Contact
 - Project Link: [https://github.com/FlyingFathead/gpt2-tensorflow-localchat](https://github.com/FlyingFathead/gpt2-tensorflow-localchat)
