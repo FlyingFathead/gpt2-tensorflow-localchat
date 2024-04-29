@@ -151,11 +151,22 @@ class ModelWrapper:
         # Flatten the list of token lists to a single list of tokens
         context_tokens = [token for sublist in self.turns for token in sublist]
 
-        if len(context_tokens) > 0:
+        # Check if context_tokens is empty or nearly empty, which could break slicing
+        if len(context_tokens) == 0:
+            logging.error("No tokens available for interaction. Check the encoding process.")
+            return "Error: No content to process."
+
+        # Safeguard to ensure context doesn't exceed max length and isn't empty
+        if 0 < len(context_tokens) <= self.max_context_length:
             out = self.session.run(self.output, feed_dict={self.context: [context_tokens]})[:, len(context_tokens):]
         else:
-            print("Warning: No context tokens available for model interaction.")
-            return ""
+            # Handle cases where context_tokens length exceeds max_context_length or is zero
+            if len(context_tokens) > self.max_context_length:
+                context_tokens = self.manage_tokens(context_tokens)
+                out = self.session.run(self.output, feed_dict={self.context: [context_tokens]})[:, len(context_tokens):]
+            else:
+                logging.error("Unexpected token length: {}".format(len(context_tokens)))
+                return "Error: Context processing failure."
 
         # Manage tokens to ensure we don't exceed the maximum length
         if len(context_tokens) > self.max_context_length:
