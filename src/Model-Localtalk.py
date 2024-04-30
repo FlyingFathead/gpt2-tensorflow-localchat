@@ -7,7 +7,7 @@
 # Original fork: https://github.com/FlyingFathead/GPT2-Telegram-Chatbot
 # Refactored version: Local CLI
 
-version_number = 0.15
+version_number = 0.16
 
 import tensorflow as tf
 import re
@@ -66,6 +66,11 @@ class ModelWrapper:
 
         self.is_user_bot = False  # Track whether the user is acting as the bot
 
+    def reset_context(self):
+        # Reset the turns and any other necessary states
+        self.turns = []
+        print("Context cleared. Starting a new session.")
+
     def load_model(self):
         self.session = tf.compat.v1.Session(graph=tf.Graph())
         with self.session.graph.as_default():
@@ -92,35 +97,64 @@ class ModelWrapper:
         print("Swapped roles. User is now the bot." if self.is_user_bot else "Swapped back. User is the user.")
 
     def manage_tokens(self, tokens):
-        # Ensure the tokens list does not exceed max_context_length
-        if len(tokens) > self.max_context_length:
-            # Convert token IDs back to text to analyze context
-            text = self.decode(tokens)
-            
-            # Split the text by newlines to separate input-output pairs
-            dialogue_blocks = text.split('\n')
-            
-            # Keep as many of the recent dialogue blocks as possible within the token limit
-            new_dialogue = []
-            current_length = 0
-            
-            # Iterate over the dialogue blocks from the end to the beginning
-            for block in reversed(dialogue_blocks):
-                encoded_block = self.enc.encode(block)
-                if current_length + len(encoded_block) <= self.max_context_length:
-                    new_dialogue.append(block)
-                    current_length += len(encoded_block)
-                else:
-                    break
-            
-            # Since new_dialogue was built from the end backwards, reverse it to restore order
-            new_dialogue.reverse()
-            
-            # Join the trimmed dialogue blocks back together with newlines
-            reduced_text = '\n'.join(new_dialogue)
-            tokens = self.enc.encode(reduced_text)
-            
+        # Decode tokens to text to analyze context
+        text = self.decode(tokens)
+        dialogue_blocks = text.split('\n')
+
+        # Keep as many of the recent dialogue blocks as possible within the token limit
+        new_dialogue = []
+        current_length = 0
+        
+        # Iterate over the dialogue blocks from the end to the beginning
+        for block in reversed(dialogue_blocks):
+            encoded_block = self.enc.encode(block)
+            if current_length + len(encoded_block) <= self.max_context_length:
+                new_dialogue.append(block)
+                current_length += len(encoded_block)
+            else:
+                break
+
+        # Ensure there's at least one block pair to maintain dialogue continuity
+        if len(new_dialogue) < 2 and len(dialogue_blocks) >= 2:
+            new_dialogue = dialogue_blocks[-2:]
+
+        # Since new_dialogue was built from the end backwards, reverse it to restore order
+        new_dialogue.reverse()
+        # Join the trimmed dialogue blocks back together with newlines
+        reduced_text = '\n'.join(new_dialogue)
+        tokens = self.enc.encode(reduced_text)
         return tokens
+
+    # def manage_tokens(self, tokens):
+    #     # Ensure the tokens list does not exceed max_context_length
+    #     if len(tokens) > self.max_context_length:
+    #         # Convert token IDs back to text to analyze context
+    #         text = self.decode(tokens)
+            
+    #         # Split the text by newlines to separate input-output pairs
+    #         dialogue_blocks = text.split('\n')
+            
+    #         # Keep as many of the recent dialogue blocks as possible within the token limit
+    #         new_dialogue = []
+    #         current_length = 0
+            
+    #         # Iterate over the dialogue blocks from the end to the beginning
+    #         for block in reversed(dialogue_blocks):
+    #             encoded_block = self.enc.encode(block)
+    #             if current_length + len(encoded_block) <= self.max_context_length:
+    #                 new_dialogue.append(block)
+    #                 current_length += len(encoded_block)
+    #             else:
+    #                 break
+            
+    #         # Since new_dialogue was built from the end backwards, reverse it to restore order
+    #         new_dialogue.reverse()
+            
+    #         # Join the trimmed dialogue blocks back together with newlines
+    #         reduced_text = '\n'.join(new_dialogue)
+    #         tokens = self.enc.encode(reduced_text)
+            
+    #     return tokens
 
     def decode(self, tokens):
         text = []
@@ -156,6 +190,11 @@ class ModelWrapper:
             logging.error("No tokens available for interaction. Check the encoding process.")
             return "Error: No content to process."
 
+        # Manage tokens to ensure we don't exceed the maximum length
+        if len(context_tokens) > self.max_context_length:
+            # More intelligent trimming can be applied here
+            context_tokens = self.manage_tokens(context_tokens)
+
         # Safeguard to ensure context doesn't exceed max length and isn't empty
         if 0 < len(context_tokens) <= self.max_context_length:
             out = self.session.run(self.output, feed_dict={self.context: [context_tokens]})[:, len(context_tokens):]
@@ -168,41 +207,37 @@ class ModelWrapper:
                 logging.error("Unexpected token length: {}".format(len(context_tokens)))
                 return "Error: Context processing failure."
 
-        # Manage tokens to ensure we don't exceed the maximum length
-        if len(context_tokens) > self.max_context_length:
-            # More intelligent trimming can be applied here
-            context_tokens = self.manage_tokens(context_tokens)
-
         # Debugging: Log the number of tokens being processed
         if debug:
             logging.debug(f"Processing {len(context_tokens)} tokens.")
 
-        # Process the context
-        out = self.session.run(self.output, feed_dict={self.context: [context_tokens]})[:, len(context_tokens):]
-
+        # Attempt to run the model only when there are enough tokens to process
         try:
-            text = self.enc.decode(out[0])
-        except KeyError as e:
-            print(f"Unknown token ID {e.args[0]} encountered in the output.")
-            text = "[Decode Error]"
+            out = self.session.run(self.output, feed_dict={self.context: [context_tokens]})
+            result_tokens = out[:, len(context_tokens):]  # Slicing from the length of the input context
+            text_output = self.enc.decode(result_tokens[0])
+        except Exception as e:
+            logging.error(f"Failed during TensorFlow session run or output processing: {str(e)}")
+            return "[Execution Error]"
+
+        return text_output.split('\n')[0]
         
-        return text.split('\n')[0]
-    
 # Usage
 model_wrapper = ModelWrapper(models_directory)
 
 def main_loop():
     print("Welcome to the CLI Chatbot. Type 'quit' to exit.")
     while True:
-        inp = input("Bot: " if model_wrapper.is_user_bot else "You: ")
-        if inp.lower() == 'quit':
+        user_input = input("Bot: " if model_wrapper.is_user_bot else "You: ")
+        if user_input.lower() == 'quit':
             break
-        elif inp.lower() == '/swap':
+        elif user_input.lower() == '/swap':
             model_wrapper.swap_prefixes()
+        elif user_input.lower() == '/clear':
+            model_wrapper.reset_context()
         else:
-            response = model_wrapper.interact_model(inp)
-            # Output the response on the appropriate line based on the current role
+            response = model_wrapper.interact_model(user_input)
             print("You:" if model_wrapper.is_user_bot else "Bot:", response)
-
+            
 if __name__ == '__main__':
     main_loop()
