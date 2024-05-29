@@ -151,7 +151,11 @@ class ModelWrapper:
         # Join the trimmed dialogue blocks back together with newlines
         reduced_text = '\n'.join(new_dialogue)
         tokens = self.enc.encode(reduced_text)
+        
+        # Log the new token length
+        logging.debug(f"Managed tokens length: {len(tokens)}")
         return tokens
+
 
     # def manage_tokens(self, tokens):
     #     # Ensure the tokens list does not exceed max_context_length
@@ -206,8 +210,7 @@ class ModelWrapper:
     #     return text
 
     def interact_model(self, text_input):
-        # new_input_tokens = self.enc.encode(input_prefix + text_input + '\n' + output_prefix)
-        new_input_tokens = self.enc.encode(self.input_prefix + text_input + '\n' + self.output_prefix)        
+        new_input_tokens = self.enc.encode(self.input_prefix + text_input + '\n' + self.output_prefix)
         self.turns.append(new_input_tokens)
 
         # Flatten the list of token lists to a single list of tokens
@@ -225,15 +228,27 @@ class ModelWrapper:
 
         # Safeguard to ensure context doesn't exceed max length and isn't empty
         if 0 < len(context_tokens) <= self.max_context_length:
-            out = self.session.run(self.output, feed_dict={self.context: [context_tokens]})[:, len(context_tokens):]
+            try:
+                out = self.session.run(self.output, feed_dict={self.context: [context_tokens]})[:, len(context_tokens):]
+            except Exception as e:
+                logging.error(f"Failed during TensorFlow session run or output processing: {str(e)}")
+                self.reset_context()
+                return "[Execution Error]"
+
         else:
             # Handle cases where context_tokens length exceeds max_context_length or is zero
             if len(context_tokens) > self.max_context_length:
                 context_tokens = self.manage_tokens(context_tokens)
-                out = self.session.run(self.output, feed_dict={self.context: [context_tokens]})[:, len(context_tokens):]
+                try:
+                    out = self.session.run(self.output, feed_dict={self.context: [context_tokens]})[:, len(context_tokens):]
+                except Exception as e:
+                    logging.error(f"Failed during TensorFlow session run or output processing: {str(e)}")
+                    self.reset_context()
+                    return "[Execution Error]"
             else:
                 logging.error("Unexpected token length: {}".format(len(context_tokens)))
-                return "Error: Context processing failure."
+                self.reset_context()
+                return "Error: Context processing failure. Context has been reset."
 
         # Debugging: Log the number of tokens being processed
         if debug:
@@ -243,13 +258,17 @@ class ModelWrapper:
         try:
             out = self.session.run(self.output, feed_dict={self.context: [context_tokens]})
             result_tokens = out[:, len(context_tokens):]  # Slicing from the length of the input context
+            if len(result_tokens[0]) == 0:
+                logging.error("Zero token length detected in model output. Regenerating context.")
+                self.reset_context()
+                return "Error: Zero token length output. Context has been reset."
             text_output = self.enc.decode(result_tokens[0])
         except Exception as e:
             logging.error(f"Failed during TensorFlow session run or output processing: {str(e)}")
             return "[Execution Error]"
 
         return text_output.split('\n')[0]
-        
+ 
 # Usage
 model_wrapper = ModelWrapper(models_directory)
 
