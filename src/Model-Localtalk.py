@@ -7,7 +7,7 @@
 # Original fork: https://github.com/FlyingFathead/GPT2-Telegram-Chatbot
 # Refactored version: Local CLI
 
-version_number = 0.16
+version_number = 0.17
 
 import tensorflow as tf
 import re
@@ -18,24 +18,52 @@ import threading
 import random
 import logging
 import numpy as np
+import GPUtil
 import model
 import sample
 import encoder
 
+# Initialize logging
+logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+                    level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 # Set the directory for models here
 models_directory = os.path.expanduser('~/NeuralNetwork/vzgpt/__incheck/')
 
+# Check for available GPUs using GPUtil
+def get_best_gpu():
+    gpus = GPUtil.getGPUs()
+    if not gpus:
+        raise RuntimeError("No GPUs found")
+
+    # Log detected GPUs
+    for gpu in gpus:
+        logging.info(f"GPU {gpu.id}: {gpu.name}, Free Memory: {gpu.memoryFree}MB, Total Memory: {gpu.memoryTotal}MB")
+
+    # Sort GPUs by the free memory available
+    best_gpu = sorted(gpus, key=lambda gpu: gpu.memoryFree, reverse=True)[0]
+    logging.info(f"Selected GPU {best_gpu.id}: {best_gpu.name} with {best_gpu.memoryFree}MB free memory")
+    return best_gpu.id
+
 # Set the GPU you want to use here
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'  # Adjust this as needed to switch GPUs
+# os.environ['CUDA_VISIBLE_DEVICES'] = '0'  # Adjust this as needed to switch GPUs
+
+# Function to set the best GPU as the visible device
+def set_best_gpu():
+    use_best_gpu = True  # Set this flag based on your preference
+    if use_best_gpu:
+        best_gpu_id = get_best_gpu()
+        os.environ['CUDA_VISIBLE_DEVICES'] = str(best_gpu_id)
+    else:
+        os.environ['CUDA_VISIBLE_DEVICES'] = '0'  # Adjust this as needed to switch GPUs
+
+# Call the function to set the best GPU
+set_best_gpu()
 
 # Suppress TensorFlow logging
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # This will hide INFO and WARNING messages
 tf.get_logger().setLevel('ERROR')  # Suppresses info and warning messages
-
-# Initialize logging
-logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-                    level=logging.ERROR)
-logger = logging.getLogger(__name__)
 
 # Model and conversation settings
 input_prefix = "|k| "

@@ -55,6 +55,7 @@ To start a local chat with the model:
 This script sets the appropriate TensorFlow logging level and starts an interactive chat session using `Model-Localtalk.py`.
 
 ## Changes
+- `v0.17` - local chat now uses `GPUtil` to look for the best available CUDA GPU
 - `v0.16` - `/clear` to clear out the context memory
 - `v0.15` - bugfixes, `/swap` for role-swapping between user and the model
 - `v0.10` - initial commit
